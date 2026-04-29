@@ -13,7 +13,7 @@ const FooterNewsletter = () => {
   return (
     <section aria-label="Cadastro na newsletter" className="max-w-sm">
       <h3 className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-900 dark:text-white">
-        Newsletter
+        Informativo
       </h3>
       <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
         Receba ofertas exclusivas e novidades diretamente no seu e-mail.

@@ -29,7 +29,7 @@ const LeftDrawer = () => {
         aria-modal="true"
         aria-label="Menu de navegação"
         className={cn(
-          'fixed inset-y-0 left-0 z-[var(--z-drawer)] flex w-72 flex-col bg-white dark:bg-slate-950',
+          'fixed inset-y-0 left-0 z-(--z-drawer) flex w-72 flex-col bg-white dark:bg-slate-950',
           'border-r border-slate-200 dark:border-slate-800',
           'transform transition-transform duration-300 ease-in-out',
           state.leftOpen ? 'translate-x-0' : '-translate-x-full'

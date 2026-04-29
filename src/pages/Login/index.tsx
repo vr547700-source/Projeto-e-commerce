@@ -48,9 +48,9 @@ const Login = () => {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-slate-900 dark:bg-white">
             <LockClosedIcon className="h-6 w-6 text-white dark:text-slate-900" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Entrar na conta</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Faça seu login</h1>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            Use suas credenciais para acessar
+            Preencha com seus dados
           </p>
         </div>
 
