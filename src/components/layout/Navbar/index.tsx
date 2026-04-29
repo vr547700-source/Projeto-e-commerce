@@ -5,7 +5,7 @@ import { mainNavLinks } from '../../../constants/navigation'
 import { Link } from 'react-router-dom'
 
 const Navbar = () => (
-  <header role="banner" className="sticky top-0 z-[var(--z-navbar)] border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+  <header role="banner" className="sticky top-0 z-(--z-navbar) border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
     <nav
       aria-label="Navegação principal"
       className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8"

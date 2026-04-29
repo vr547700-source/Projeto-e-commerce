@@ -33,7 +33,7 @@ const RightDrawer = () => {
         aria-modal="true"
         aria-label="Carrinho e favoritos"
         className={cn(
-          'fixed inset-y-0 right-0 z-[var(--z-drawer)] flex w-80 flex-col bg-white dark:bg-slate-950',
+          'fixed inset-y-0 right-0 z-(--z-drawer) flex w-80 flex-col bg-white dark:bg-slate-950',
           'border-l border-slate-200 dark:border-slate-800',
           'transform transition-transform duration-300 ease-in-out',
           state.rightOpen ? 'translate-x-0' : 'translate-x-full'
