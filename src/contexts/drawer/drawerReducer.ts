@@ -6,7 +6,7 @@ export const initialDrawerState: DrawerState = {
   rightTab: 'cart',
 }
 
-export function drawerReducer(state: DrawerState, action: DrawerAction): DrawerState {
+export const drawerReducer = (state: DrawerState, action: DrawerAction): DrawerState => {
   switch (action.type) {
     case 'OPEN_LEFT':
       return { ...state, leftOpen: true }
