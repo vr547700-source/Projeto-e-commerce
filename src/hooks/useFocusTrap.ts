@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 
-export function useFocusTrap<T extends HTMLElement>(active: boolean) {
+export const useFocusTrap = <T extends HTMLElement>(active: boolean) => {
   const ref = useRef<T>(null)
 
   useEffect(() => {
