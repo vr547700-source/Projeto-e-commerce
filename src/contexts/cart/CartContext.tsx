@@ -1,10 +1,12 @@
-import { createContext, useReducer, useCallback, useMemo } from 'react'
+import { createContext, useReducer, useCallback, useMemo, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { cartReducer, initialCartState } from './cartReducer'
 import type { CartState, CartAction } from '../../types/cart'
 import type { Product } from '../../types/product'
+import { useToast } from '../toast/useToast'
 
 const STORAGE_KEY = 'cart'
+const MAX_QUANTITY = 10
 
 const loadCart = (): CartState => {
   const raw = localStorage.getItem(STORAGE_KEY)
@@ -31,20 +33,50 @@ export const CartContext = createContext<CartContextValue | null>(null)
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [state, dispatch] = useReducer(cartReducer, undefined, loadCart)
+  const { toast } = useToast()
 
   const addItem = useCallback(
-    (product: Product) => dispatch({ type: 'ADD_ITEM', product }),
-    []
+    (product: Product) => {
+      const existing = state.items.find((i) => i.product.id === product.id)
+      const currentQty = existing?.quantity ?? 0
+
+      if (currentQty >= MAX_QUANTITY) {
+        toast(
+          'Limite de 10 unidades atingido. Um gerente entrará em contato para pedidos maiores.',
+          'warning'
+        )
+        return
+      }
+
+      dispatch({ type: 'ADD_ITEM', product })
+      toast(`"${product.title.slice(0, 30)}..." adicionado ao carrinho.`, 'success')
+    },
+    [state.items, toast]
   )
+
   const removeItem = useCallback(
-    (productId: number) => dispatch({ type: 'REMOVE_ITEM', productId }),
-    []
+    (productId: number) => {
+      dispatch({ type: 'REMOVE_ITEM', productId })
+      toast('Item removido do carrinho.', 'info')
+    },
+    [toast]
   )
+
   const updateQuantity = useCallback(
-    (productId: number, quantity: number) =>
-      dispatch({ type: 'UPDATE_QUANTITY', productId, quantity }),
-    []
+    (productId: number, quantity: number) => {
+      if (quantity > MAX_QUANTITY) {
+        toast(
+          'Limite de 10 unidades atingido. Um gerente entrará em contato para pedidos maiores.',
+          'warning'
+        )
+        dispatch({ type: 'UPDATE_QUANTITY', productId, quantity: MAX_QUANTITY })
+        return
+      }
+      dispatch({ type: 'UPDATE_QUANTITY', productId, quantity })
+    },
+    [toast]
   )
+
   const clearCart = useCallback(() => dispatch({ type: 'CLEAR_CART' }), [])
 
   const totalItems = useMemo(
@@ -56,7 +88,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     [state.items]
   )
 
-  useMemo(() => {
+  useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   }, [state])
 

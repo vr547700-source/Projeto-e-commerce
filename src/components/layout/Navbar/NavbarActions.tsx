@@ -5,6 +5,8 @@ import {
   XMarkIcon,
   ArrowRightStartOnRectangleIcon,
   Cog6ToothIcon,
+  SunIcon,
+  MoonIcon,
 } from '@heroicons/react/24/outline'
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, useRef, useEffect } from 'react'
@@ -13,12 +15,14 @@ import Badge from '../../ui/Badge'
 import { useDrawer } from '../../../contexts/drawer/useDrawer'
 import { useAuth } from '../../../contexts/auth/useAuth'
 import { useCart } from '../../../contexts/cart/useCart'
+import { useTheme } from '../../../contexts/theme/useTheme'
 import { cn } from '../../../utils/cn'
 
 const NavbarActions = () => {
   const { state, toggleLeft, openRight } = useDrawer()
   const { isAuthenticated, isAdmin, user, logout } = useAuth()
   const { totalItems } = useCart()
+  const { theme, toggleTheme } = useTheme()
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -49,6 +53,17 @@ const NavbarActions = () => {
         <Badge count={totalItems}>
           <ShoppingCartIcon className="h-5 w-5" />
         </Badge>
+      </IconButton>
+
+      <IconButton
+        label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+        onClick={toggleTheme}
+      >
+        {theme === 'dark' ? (
+          <SunIcon className="h-5 w-5" />
+        ) : (
+          <MoonIcon className="h-5 w-5" />
+        )}
       </IconButton>
 
       {isAuthenticated ? (
@@ -131,7 +146,7 @@ const NavbarActions = () => {
         onClick={toggleLeft}
         aria-expanded={state.leftOpen}
         aria-controls="left-drawer"
-        className="md:hidden"
+        className="lg:hidden"
       >
         {state.leftOpen ? (
           <XMarkIcon className="h-5 w-5" />

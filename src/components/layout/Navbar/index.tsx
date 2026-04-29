@@ -12,7 +12,7 @@ const Navbar = () => (
     >
       <NavbarLogo />
 
-      <div className="hidden items-center gap-6 md:flex">
+      <div className="hidden items-center gap-6 lg:flex">
         {mainNavLinks.map((link) => (
           <Link
             key={link.href}

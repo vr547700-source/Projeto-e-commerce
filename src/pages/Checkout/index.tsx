@@ -14,15 +14,46 @@ interface FormData {
   cvv: string
 }
 
+interface FormErrors {
+  card?: string
+  expiry?: string
+  cvv?: string
+}
+
 const emptyForm: FormData = {
   name: '', email: '', address: '', city: '', zipcode: '',
   card: '', expiry: '', cvv: '',
+}
+
+const formatCard = (v: string) =>
+  v.replace(/\D/g, '').slice(0, 16).replace(/(.{4})/g, '$1 ').trim()
+
+const formatExpiry = (v: string) => {
+  const digits = v.replace(/\D/g, '').slice(0, 4)
+  if (digits.length > 2) return `${digits.slice(0, 2)}/${digits.slice(2)}`
+  return digits
+}
+
+const validatePayment = (form: FormData): FormErrors => {
+  const errors: FormErrors = {}
+  const cardDigits = form.card.replace(/\s/g, '')
+  if (cardDigits.length !== 16) errors.card = 'O cartão deve ter 16 dígitos.'
+
+  const [month, year] = form.expiry.split('/')
+  const monthNum = Number(month)
+  if (!month || !year || year.length !== 2 || monthNum < 1 || monthNum > 12) {
+    errors.expiry = 'Use o formato MM/AA.'
+  }
+
+  if (form.cvv.replace(/\D/g, '').length !== 3) errors.cvv = 'O CVV deve ter 3 dígitos.'
+  return errors
 }
 
 const Checkout = () => {
   const { items, subtotal, clearCart } = useCart()
   const navigate = useNavigate()
   const [form, setForm] = useState<FormData>(emptyForm)
+  const [errors, setErrors] = useState<FormErrors>({})
   const [done, setDone] = useState(false)
 
   if (items.length === 0 && !done) {
@@ -55,11 +86,27 @@ const Checkout = () => {
     )
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    let formatted = value
+
+    if (name === 'card') formatted = formatCard(value)
+    if (name === 'expiry') formatted = formatExpiry(value)
+    if (name === 'cvv') formatted = value.replace(/\D/g, '').slice(0, 3)
+
+    setForm((prev) => ({ ...prev, [name]: formatted }))
+    if (errors[name as keyof FormErrors]) {
+      setErrors((prev) => ({ ...prev, [name]: undefined }))
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    const paymentErrors = validatePayment(form)
+    if (Object.keys(paymentErrors).length > 0) {
+      setErrors(paymentErrors)
+      return
+    }
     clearCart()
     setDone(true)
   }
@@ -69,9 +116,9 @@ const Checkout = () => {
     label: string,
     placeholder: string,
     type = 'text',
-    className = ''
+    containerClass = ''
   ) => (
-    <div className={className}>
+    <div className={containerClass}>
       <label
         htmlFor={id}
         className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300"
@@ -86,8 +133,15 @@ const Checkout = () => {
         value={form[id]}
         onChange={handleChange}
         placeholder={placeholder}
-        className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:border-slate-400 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500"
+        className={`w-full rounded-lg border bg-slate-50 px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 ${
+          errors[id as keyof FormErrors]
+            ? 'border-rose-400 focus:border-rose-500'
+            : 'border-slate-200 focus:border-slate-400 dark:border-slate-700'
+        }`}
       />
+      {errors[id as keyof FormErrors] && (
+        <p className="mt-1 text-xs text-rose-500">{errors[id as keyof FormErrors]}</p>
+      )}
     </div>
   )
 
@@ -104,9 +158,7 @@ const Checkout = () => {
       <div className="grid gap-8 lg:grid-cols-5">
         <form onSubmit={handleSubmit} className="space-y-6 lg:col-span-3">
           <section className="rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900">
-            <h2 className="mb-4 font-semibold text-slate-900 dark:text-white">
-              Dados de entrega
-            </h2>
+            <h2 className="mb-4 font-semibold text-slate-900 dark:text-white">Dados de entrega</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               {field('name', 'Nome completo', 'João Silva', 'text', 'sm:col-span-2')}
               {field('email', 'E-mail', 'joao@email.com', 'email', 'sm:col-span-2')}

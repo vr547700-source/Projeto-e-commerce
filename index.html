@@ -1,16 +1,36 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>projeto-e-commerce</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="description" content="eShop — sua loja virtual com eletrônicos, moda e muito mais. Compre com segurança e praticidade." />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="eShop — Loja Virtual" />
+    <meta property="og:description" content="Eletrônicos, moda, casa e muito mais. Entrega rápida e segura." />
+    <meta property="og:site_name" content="eShop" />
+
+    <!-- Theme color (matches Navbar) -->
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#020617" media="(prefers-color-scheme: dark)" />
+
+    <!-- Favicon inline SVG -->
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230f172a'/><path d='M8 10h2l2.5 8 2-6h3l2 6 2.5-8H24l-4 12h-3l-2-5.5L13 22H10Z' fill='%23f8fafc'/></svg>"
+    />
+
+    <title>eShop — Loja Virtual</title>
   </head>
   <body>
     <a
       href="#main-content"
-      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:outline-none"
     >
-      Pular para o conteúdo
+      Pular para o conteúdo principal
     </a>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

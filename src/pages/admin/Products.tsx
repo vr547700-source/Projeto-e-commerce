@@ -3,10 +3,16 @@ import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { mutate } from 'swr'
 import { useProducts, useCategories } from '../../hooks/useProducts'
 import { productsService } from '../../services/products.service'
+import { storeCreateProduct, storeUpdateProduct, storeDeleteProduct } from '../../store/adminStore'
 import type { Product, CreateProductPayload } from '../../types/product'
 import LoadingSpinner from '../../components/shared/LoadingSpinner'
 import ErrorMessage from '../../components/shared/ErrorMessage'
 import Modal from '../../components/shared/Modal'
+import AppDialog from '../../components/ui/AppDialog'
+import InputField from '../../components/ui/InputField'
+import SelectField from '../../components/ui/SelectField'
+import TextAreaField from '../../components/ui/TextAreaField'
+import { useToast } from '../../contexts/toast/useToast'
 
 type ModalMode = 'create' | 'edit'
 
@@ -14,13 +20,18 @@ const emptyForm: CreateProductPayload = {
   title: '', price: 0, description: '', category: '', image: '',
 }
 
+const PRODUCTS_KEY = '/products'
+
 const AdminProducts = () => {
   const { data: products, error, isLoading } = useProducts()
   const { data: categories } = useCategories()
+  const { toast } = useToast()
   const [modal, setModal] = useState<{ mode: ModalMode; product?: Product } | null>(null)
   const [form, setForm] = useState<CreateProductPayload>(emptyForm)
   const [saving, setSaving] = useState(false)
-  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [confirmId, setConfirmId] = useState<number | null>(null)
+  const [confirmInput, setConfirmInput] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   const openCreate = () => {
     setForm(emptyForm)
@@ -40,6 +51,16 @@ const AdminProducts = () => {
 
   const closeModal = () => setModal(null)
 
+  const openConfirm = (id: number) => {
+    setConfirmId(id)
+    setConfirmInput('')
+  }
+
+  const closeConfirm = () => {
+    setConfirmId(null)
+    setConfirmInput('')
+  }
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
   ) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -50,29 +71,54 @@ const AdminProducts = () => {
     try {
       const payload = { ...form, price: Number(form.price) }
       if (modal?.mode === 'edit' && modal.product) {
+        const updated: Product = { ...modal.product, ...payload }
         await productsService.update(modal.product.id, payload)
+        storeUpdateProduct(updated)
+        mutate(PRODUCTS_KEY, (prev: Product[] | undefined) =>
+          prev?.map((p) => (p.id === modal.product!.id ? updated : p)), { revalidate: false }
+        )
+        toast('Produto atualizado com sucesso.', 'success')
       } else {
         await productsService.create(payload)
+        const newProduct: Product = {
+          ...payload,
+          id: Date.now(),
+          rating: { rate: 0, count: 0 },
+        }
+        storeCreateProduct(newProduct)
+        mutate(PRODUCTS_KEY, (prev: Product[] | undefined) =>
+          prev ? [...prev, newProduct] : [newProduct], { revalidate: false }
+        )
+        toast('Produto criado com sucesso.', 'success')
       }
-      mutate('/products')
       closeModal()
+    } catch {
+      toast('Erro ao salvar produto. Tente novamente.', 'error')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDelete = async (id: number) => {
-    setDeleteId(id)
+  const handleDelete = async () => {
+    if (confirmId === null || String(confirmId) !== confirmInput) return
+    setDeleting(true)
     try {
-      await productsService.remove(id)
-      mutate('/products')
+      await productsService.remove(confirmId)
+      storeDeleteProduct(confirmId)
+      mutate(PRODUCTS_KEY, (prev: Product[] | undefined) =>
+        prev?.filter((p) => p.id !== confirmId), { revalidate: false }
+      )
+      toast('Produto excluído com sucesso.', 'success')
+      closeConfirm()
+    } catch {
+      toast('Erro ao excluir produto. Tente novamente.', 'error')
     } finally {
-      setDeleteId(null)
+      setDeleting(false)
     }
   }
 
   if (isLoading) return <div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>
-  if (error) return <ErrorMessage onRetry={() => mutate('/products')} />
+  if (error) return <ErrorMessage onRetry={() => mutate(PRODUCTS_KEY)} />
 
   return (
     <div>
@@ -131,16 +177,11 @@ const AdminProducts = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDelete(product.id)}
+                      onClick={() => openConfirm(product.id)}
                       aria-label="Excluir produto"
-                      disabled={deleteId === product.id}
-                      className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 disabled:opacity-50 dark:hover:bg-rose-900/20"
+                      className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-900/20"
                     >
-                      {deleteId === product.id ? (
-                        <LoadingSpinner size="sm" />
-                      ) : (
-                        <TrashIcon className="h-4 w-4" />
-                      )}
+                      <TrashIcon className="h-4 w-4" />
                     </button>
                   </div>
                 </td>
@@ -156,64 +197,54 @@ const AdminProducts = () => {
           onClose={closeModal}
         >
           <form onSubmit={handleSave} className="space-y-4">
-            {(
-              [
-                { name: 'title' as const, label: 'Título', placeholder: 'Nome do produto', type: 'text' },
-                { name: 'image' as const, label: 'URL da imagem', placeholder: 'https://...', type: 'text' },
-                { name: 'price' as const, label: 'Preço', placeholder: '0.00', type: 'number' },
-              ]
-            ).map(({ name, label, placeholder, type }) => (
-              <div key={name}>
-                <label htmlFor={name} className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {label}
-                </label>
-                <input
-                  id={name}
-                  name={name}
-                  type={type ?? 'text'}
-                  required
-                  value={form[name]}
-                  onChange={handleChange}
-                  placeholder={placeholder}
-                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-slate-400 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                />
-              </div>
-            ))}
-
-            <div>
-              <label htmlFor="category" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Categoria
-              </label>
-              <select
-                id="category"
-                name="category"
-                required
-                value={form.category}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-slate-400 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              >
-                <option value="">Selecione</option>
-                {categories?.map((cat) => (
-                  <option key={cat} value={cat} className="capitalize">{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="description" className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Descrição
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                required
-                rows={3}
-                value={form.description}
-                onChange={handleChange}
-                placeholder="Descrição do produto"
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-slate-400 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-              />
-            </div>
+            <InputField
+              label="Título"
+              name="title"
+              placeholder="Nome do produto"
+              required
+              value={form.title}
+              onChange={handleChange}
+            />
+            <InputField
+              label="URL da imagem"
+              name="image"
+              placeholder="https://..."
+              required
+              value={form.image}
+              onChange={handleChange}
+            />
+            <InputField
+              label="Preço"
+              name="price"
+              type="number"
+              placeholder="0.00"
+              min="0"
+              step="0.01"
+              required
+              value={form.price}
+              onChange={handleChange}
+            />
+            <SelectField
+              label="Categoria"
+              name="category"
+              required
+              value={form.category}
+              onChange={handleChange}
+            >
+              <option value="">Selecione</option>
+              {categories?.map((cat) => (
+                <option key={cat} value={cat} className="capitalize">{cat}</option>
+              ))}
+            </SelectField>
+            <TextAreaField
+              label="Descrição"
+              name="description"
+              rows={3}
+              placeholder="Descrição do produto"
+              required
+              value={form.description}
+              onChange={handleChange}
+            />
 
             <div className="flex justify-end gap-3 pt-2">
               <button
@@ -235,6 +266,37 @@ const AdminProducts = () => {
           </form>
         </Modal>
       )}
+
+      <AppDialog open={confirmId !== null} onClose={closeConfirm} title="Confirmar exclusão" maxWidth="sm">
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+          Esta ação não pode ser desfeita. Digite o ID{' '}
+          <strong className="text-slate-900 dark:text-white">{confirmId}</strong> para confirmar.
+        </p>
+        <InputField
+          label="Confirmação"
+          value={confirmInput}
+          onChange={(e) => setConfirmInput(e.target.value)}
+          placeholder={`Digite ${confirmId}`}
+        />
+        <div className="mt-4 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={closeConfirm}
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={String(confirmId) !== confirmInput || deleting}
+            className="flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-700 disabled:opacity-50"
+          >
+            {deleting && <LoadingSpinner size="sm" />}
+            {deleting ? 'Excluindo...' : 'Excluir'}
+          </button>
+        </div>
+      </AppDialog>
     </div>
   )
 }

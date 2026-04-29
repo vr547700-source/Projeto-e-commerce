@@ -1,14 +1,32 @@
 import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 const NavbarSearch = () => {
   const [query, setQuery] = useState('')
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (query.trim()) navigate(`/products?q=${encodeURIComponent(query.trim())}`)
+    const category = searchParams.get('category')
+    const params = new URLSearchParams()
+    if (category) params.set('category', category)
+
+    if (query.trim()) {
+      params.set('q', encodeURIComponent(query.trim()))
+      navigate(`/products?${params.toString()}`)
+    } else {
+      navigate(`/products${params.toString() ? `?${params.toString()}` : ''}`)
+    }
+  }
+
+  const handleClear = () => {
+    setQuery('')
+    const category = searchParams.get('category')
+    const params = new URLSearchParams()
+    if (category) params.set('category', category)
+    navigate(`/products${params.toString() ? `?${params.toString()}` : ''}`)
   }
 
   return (
@@ -22,7 +40,10 @@ const NavbarSearch = () => {
         <input
           type="search"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value)
+            if (e.target.value === '') handleClear()
+          }}
           placeholder="Buscar produtos..."
           aria-label="Buscar produtos"
           className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2 pl-9 pr-4 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-slate-400 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder-slate-500 dark:focus:border-slate-500 dark:focus:bg-slate-700"

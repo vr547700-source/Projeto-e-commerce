@@ -3,12 +3,17 @@ import { PlusIcon, PencilIcon, TrashIcon, ShieldCheckIcon } from '@heroicons/rea
 import { mutate } from 'swr'
 import { useUsers } from '../../hooks/useUsers'
 import { usersService } from '../../services/users.service'
+import { storeCreateUser, storeUpdateUser, storeDeleteUser } from '../../store/adminStore'
 import type { User, CreateUserPayload } from '../../types/user'
 import LoadingSpinner from '../../components/shared/LoadingSpinner'
 import ErrorMessage from '../../components/shared/ErrorMessage'
 import Modal from '../../components/shared/Modal'
+import AppDialog from '../../components/ui/AppDialog'
+import InputField from '../../components/ui/InputField'
+import { useToast } from '../../contexts/toast/useToast'
 
 const ADMIN_USERNAME = 'mor_2314'
+const USERS_KEY = '/users'
 
 const emptyForm: CreateUserPayload = {
   username: '',
@@ -23,10 +28,13 @@ type ModalMode = 'create' | 'edit'
 
 const AdminUsers = () => {
   const { data: users, error, isLoading } = useUsers()
+  const { toast } = useToast()
   const [modal, setModal] = useState<{ mode: ModalMode; user?: User } | null>(null)
   const [form, setForm] = useState<CreateUserPayload>(emptyForm)
   const [saving, setSaving] = useState(false)
-  const [deleteId, setDeleteId] = useState<number | null>(null)
+  const [confirmId, setConfirmId] = useState<number | null>(null)
+  const [confirmInput, setConfirmInput] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   const openCreate = () => {
     setForm(emptyForm)
@@ -47,6 +55,16 @@ const AdminUsers = () => {
 
   const closeModal = () => setModal(null)
 
+  const openConfirm = (id: number) => {
+    setConfirmId(id)
+    setConfirmInput('')
+  }
+
+  const closeConfirm = () => {
+    setConfirmId(null)
+    setConfirmInput('')
+  }
+
   const set = (field: string, value: string) =>
     setForm((prev) => {
       if (field.startsWith('name.')) return { ...prev, name: { ...prev.name, [field.slice(5)]: value } }
@@ -59,29 +77,50 @@ const AdminUsers = () => {
     setSaving(true)
     try {
       if (modal?.mode === 'edit' && modal.user) {
+        const updated: User = { ...modal.user, ...form }
         await usersService.update(modal.user.id, form)
+        storeUpdateUser(updated)
+        mutate(USERS_KEY, (prev: User[] | undefined) =>
+          prev?.map((u) => (u.id === modal.user!.id ? updated : u)), { revalidate: false }
+        )
+        toast('Usuário atualizado com sucesso.', 'success')
       } else {
         await usersService.create(form)
+        const newUser: User = { ...form, id: Date.now() }
+        storeCreateUser(newUser)
+        mutate(USERS_KEY, (prev: User[] | undefined) =>
+          prev ? [...prev, newUser] : [newUser], { revalidate: false }
+        )
+        toast('Usuário criado com sucesso.', 'success')
       }
-      mutate('/users')
       closeModal()
+    } catch {
+      toast('Erro ao salvar usuário. Tente novamente.', 'error')
     } finally {
       setSaving(false)
     }
   }
 
-  const handleDelete = async (id: number) => {
-    setDeleteId(id)
+  const handleDelete = async () => {
+    if (confirmId === null || String(confirmId) !== confirmInput) return
+    setDeleting(true)
     try {
-      await usersService.remove(id)
-      mutate('/users')
+      await usersService.remove(confirmId)
+      storeDeleteUser(confirmId)
+      mutate(USERS_KEY, (prev: User[] | undefined) =>
+        prev?.filter((u) => u.id !== confirmId), { revalidate: false }
+      )
+      toast('Usuário excluído com sucesso.', 'success')
+      closeConfirm()
+    } catch {
+      toast('Erro ao excluir usuário. Tente novamente.', 'error')
     } finally {
-      setDeleteId(null)
+      setDeleting(false)
     }
   }
 
   if (isLoading) return <div className="flex justify-center py-16"><LoadingSpinner size="lg" /></div>
-  if (error) return <ErrorMessage onRetry={() => mutate('/users')} />
+  if (error) return <ErrorMessage onRetry={() => mutate(USERS_KEY)} />
 
   return (
     <div>
@@ -150,16 +189,12 @@ const AdminUsers = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => openConfirm(user.id)}
                         aria-label="Excluir usuário"
-                        disabled={deleteId === user.id || isAdmin}
+                        disabled={isAdmin}
                         className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-500 disabled:cursor-not-allowed disabled:opacity-30 dark:hover:bg-rose-900/20"
                       >
-                        {deleteId === user.id ? (
-                          <LoadingSpinner size="sm" />
-                        ) : (
-                          <TrashIcon className="h-4 w-4" />
-                        )}
+                        <TrashIcon className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
@@ -182,8 +217,8 @@ const AdminUsers = () => {
                   { field: 'name.firstname', label: 'Nome', placeholder: 'João', type: 'text' },
                   { field: 'name.lastname', label: 'Sobrenome', placeholder: 'Silva', type: 'text' },
                   { field: 'username', label: 'Usuário', placeholder: 'joao_silva', type: 'text' },
-                  { field: 'email', label: 'E-mail', placeholder: 'joao@email.com', type: 'text' },
-                  { field: 'phone', label: 'Telefone', placeholder: '(11) 99999-9999', type: 'text' },
+                  { field: 'email', label: 'E-mail', placeholder: 'joao@email.com', type: 'email' },
+                  { field: 'phone', label: 'Telefone', placeholder: '(11) 99999-9999', type: 'tel' },
                   { field: 'password', label: 'Senha', placeholder: '••••••', type: 'password' },
                 ] as { field: string; label: string; placeholder: string; type: string }[]
               ).map(({ field, label, placeholder, type }) => {
@@ -191,20 +226,16 @@ const AdminUsers = () => {
                   ? form.name[field.slice(5) as keyof typeof form.name]
                   : (form as unknown as Record<string, string>)[field] ?? ''
                 return (
-                  <div key={field}>
-                    <label htmlFor={field} className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                      {label}
-                    </label>
-                    <input
-                      id={field}
-                      type={type ?? 'text'}
-                      required
-                      value={value as string}
-                      onChange={(e) => set(field, e.target.value)}
-                      placeholder={placeholder}
-                      className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm focus:border-slate-400 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
-                    />
-                  </div>
+                  <InputField
+                    key={field}
+                    label={label}
+                    id={field}
+                    type={type}
+                    required
+                    value={value as string}
+                    onChange={(e) => set(field, e.target.value)}
+                    placeholder={placeholder}
+                  />
                 )
               })}
             </div>
@@ -229,6 +260,37 @@ const AdminUsers = () => {
           </form>
         </Modal>
       )}
+
+      <AppDialog open={confirmId !== null} onClose={closeConfirm} title="Confirmar exclusão" maxWidth="sm">
+        <p className="mb-4 text-sm text-slate-600 dark:text-slate-400">
+          Esta ação não pode ser desfeita. Digite o ID{' '}
+          <strong className="text-slate-900 dark:text-white">{confirmId}</strong> para confirmar.
+        </p>
+        <InputField
+          label="Confirmação"
+          value={confirmInput}
+          onChange={(e) => setConfirmInput(e.target.value)}
+          placeholder={`Digite ${confirmId}`}
+        />
+        <div className="mt-4 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={closeConfirm}
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={String(confirmId) !== confirmInput || deleting}
+            className="flex items-center gap-2 rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-700 disabled:opacity-50"
+          >
+            {deleting && <LoadingSpinner size="sm" />}
+            {deleting ? 'Excluindo...' : 'Excluir'}
+          </button>
+        </div>
+      </AppDialog>
     </div>
   )
 }

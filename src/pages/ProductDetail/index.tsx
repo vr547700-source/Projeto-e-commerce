@@ -1,16 +1,28 @@
 import { useParams, Link } from 'react-router-dom'
-import { ShoppingCartIcon, ArrowLeftIcon } from '@heroicons/react/24/outline'
-import { StarIcon as StarSolid } from '@heroicons/react/24/solid'
+import { ShoppingCartIcon, ArrowLeftIcon, HeartIcon } from '@heroicons/react/24/outline'
+import { StarIcon as StarSolid, HeartIcon as HeartSolid } from '@heroicons/react/24/solid'
+import { useState, useCallback } from 'react'
 import { useProduct } from '../../hooks/useProducts'
 import { useCart } from '../../contexts/cart/useCart'
+import { useWishlist } from '../../contexts/wishlist/useWishlist'
 import LoadingSpinner from '../../components/shared/LoadingSpinner'
 import ErrorMessage from '../../components/shared/ErrorMessage'
+import ReviewsSection from './ReviewsSection'
 
 const ProductDetail = () => {
   const { productId } = useParams()
   const id = Number(productId)
   const { data: product, error, isLoading, mutate } = useProduct(id || undefined)
   const { addItem } = useCart()
+  const { toggle, isWishlisted } = useWishlist()
+  const [added, setAdded] = useState(false)
+
+  const handleAddToCart = useCallback(() => {
+    if (!product) return
+    addItem(product)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 1500)
+  }, [product, addItem])
 
   if (isLoading) {
     return (
@@ -21,6 +33,8 @@ const ProductDetail = () => {
   }
 
   if (error || !product) return <ErrorMessage onRetry={() => mutate()} />
+
+  const wishlisted = isWishlisted(product.id)
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -33,12 +47,24 @@ const ProductDetail = () => {
       </Link>
 
       <div className="grid gap-10 md:grid-cols-2">
-        <div className="flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-8 dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 p-8 dark:border-slate-800 dark:bg-slate-900">
           <img
             src={product.image}
             alt={product.title}
             className="max-h-80 w-full object-contain"
           />
+          <button
+            type="button"
+            onClick={() => toggle(product)}
+            aria-label={wishlisted ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+            className="absolute right-3 top-3 rounded-full bg-white/80 p-2 shadow transition-colors hover:bg-white dark:bg-slate-900/80 dark:hover:bg-slate-900"
+          >
+            {wishlisted ? (
+              <HeartSolid className="h-5 w-5 text-rose-500" />
+            ) : (
+              <HeartIcon className="h-5 w-5 text-slate-400" />
+            )}
+          </button>
         </div>
 
         <div className="flex flex-col">
@@ -75,14 +101,16 @@ const ProductDetail = () => {
 
           <button
             type="button"
-            onClick={() => addItem(product)}
+            onClick={handleAddToCart}
             className="mt-8 flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-6 py-3 font-medium text-white transition-colors hover:bg-slate-700 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
           >
             <ShoppingCartIcon className="h-5 w-5" />
-            Adicionar ao carrinho
+            {added ? 'Adicionado!' : 'Adicionar ao carrinho'}
           </button>
         </div>
       </div>
+
+      <ReviewsSection productId={id} />
     </div>
   )
 }

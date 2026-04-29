@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  color-scheme: light;
   --z-navbar: 50;
   --z-overlay: 60;
   --z-drawer: 70;
   --z-toast: 80;
+}
+
+.dark {
+  color-scheme: dark;
 }
