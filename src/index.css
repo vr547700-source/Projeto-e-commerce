@@ -1,1 +1,8 @@
 @import "tailwindcss";
+
+:root {
+  --z-navbar: 50;
+  --z-overlay: 60;
+  --z-drawer: 70;
+  --z-toast: 80;
+}

@@ -1,12 +1,11 @@
-const App = () =>{
+import { RouterProvider } from 'react-router-dom'
+import { router } from './router'
+import { DrawerProvider } from './contexts/drawer/DrawerContext'
 
-  return (
-    <div className="min-h-screen bg-slate-100 dark:bg-slate-900 flex items-center justify-center">
-      <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
-        Setup OK
-      </h1>
-    </div>
-  )
-}
+const App = () => (
+  <DrawerProvider>
+    <RouterProvider router={router} />
+  </DrawerProvider>
+)
 
-export default App;
+export default App
